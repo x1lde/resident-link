@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createMiddlewareClient } from "./lib/supabase/middleware";
+import { createMiddlewareClient } from "./lib/supabase/proxy";
 
 export async function middleware(request: NextRequest) {
     // Create a Supabase client that can read cookies and set response cookies.

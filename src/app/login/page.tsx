@@ -5,15 +5,18 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-    // Next.js router for redirecting after auth success.
+    // This is used to send the user to another page after login.
     const router = useRouter();
 
-    // Supabase client used for browser authentication.
+    // Create the Supabase client so we can call login/signup.
     const supabase = createClient();
 
-    // Form state for email, password, and form mode.
+    // Track what the user types into the form.
+    const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    
+    // Track whether the form is in sign-in or sign-up mode.
     const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
     const [error, setError] = useState<string | null>(null);
 
@@ -21,14 +24,18 @@ export default function LoginPage() {
         e.preventDefault();
         setError(null);
 
-        // Call the correct Supabase auth function.
+        // If the user is signing in, use the sign-in call.
+        // Otherwise, use the sign-up call.
         const { error } = mode === "sign-in"
             ? await supabase.auth.signInWithPassword({ email, password })
             : await supabase.auth.signUp({ email, password });
 
-        if (error) return setError(error.message);
+        if (error) {
+            // Show the error message to the user.
+            return setError(error.message);
+        }
 
-        // Redirect the user once sign-in/up succeeds.
+        // If login/signup works, send the user to the dashboard.
         router.push("/resident/dashboard");
         router.refresh();
     }
@@ -37,6 +44,13 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-6">
         <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 border rounded p-6">
         <h1 className="text-2xl font-semibold">{mode === "sign-in" ? "Sign in" : "Create an account"}</h1>
+
+        {mode === "sign-up" && (
+            <input required placeholder="Full name" value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full border rounded px-3 py-2" />
+        )}
+
         <input type="email" required placeholder="Email" value={email}
             onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2" />
         <input type="password" required minLength={8} placeholder="Password" value={password}

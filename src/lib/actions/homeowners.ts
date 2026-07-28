@@ -4,11 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { requireBoardAdmin } from "@/lib/auth";
 
-/**
- * Creates a new property unit (block/lot) record safely.
- */
+// Server actions for homeowners management (create/assign units).
+// Creates a new property unit (block/lot) record.
 export async function createUnit(formData: FormData) {
-    // 1. Enforce admin role permissions checkpoint validation
+    // ensure the caller has board admin privileges
     await requireBoardAdmin();
 
     const supabase = await createClient();
@@ -21,14 +20,10 @@ export async function createUnit(formData: FormData) {
         throw new Error("Both Block and Lot identifiers are required fields.");
     }
 
-    // 3. Build the display-ready unit number for list sorting
-    const unitNumber = `B${block}-L${lot}`;
-
     // 4. Save the unit record into the database
     const { error } = await supabase.from("units").insert({
         block,
         lot,
-        unit_number: unitNumber,
         address_line: addressLine || null,
     });
 
@@ -40,11 +35,9 @@ export async function createUnit(formData: FormData) {
     revalidatePath("/board/homeowners");
 }
 
-/**
- * Links an existing registered homeowner profile to a property unit slot.
- */
+// Link a registered homeowner profile to a unit.
 export async function assignUnit(formData: FormData) {
-    // 1. Enforce admin role permissions checkpoint validation
+    // ensure caller is an admin
     await requireBoardAdmin();
 
     const supabase = await createClient();

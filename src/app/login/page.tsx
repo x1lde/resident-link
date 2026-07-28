@@ -5,65 +5,149 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-    // This is used to send the user to another page after login.
     const router = useRouter();
-
-    // Create the Supabase client so we can call login/signup.
     const supabase = createClient();
 
-    // Track what the user types into the form.
+    // basic form fields for signup/signin
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     
-    // Track whether the form is in sign-in or sign-up mode.
+    // state control for mode, error display, and loading
     const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
     const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false); // block duplicate submissions
 
-    async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError(null);
+        setIsLoading(true);
 
-        // If the user is signing in, use the sign-in call.
-        // Otherwise, use the sign-up call.
-        const { error } = mode === "sign-in"
-            ? await supabase.auth.signInWithPassword({ email, password })
-            : await supabase.auth.signUp({ email, password });
+        try {
+            if (mode === "sign-in") {
+                // authenticate existing user
+                const { error: signInError } = await supabase.auth.signInWithPassword({ 
+                    email, 
+                    password 
+                });
+                if (signInError) throw signInError;
+            } else {
+                // create new user account and attach full name metadata
+                const { error: signUpError } = await supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: fullName.trim()
+                        }
+                    }
+                });
+                if (signUpError) throw signUpError;
+            }
 
-        if (error) {
-            // Show the error message to the user.
-            return setError(error.message);
+            // navigate to the resident dashboard after success
+            router.push("/resident/dashboard");
+            router.refresh();
+            
+        } catch (err: any) {
+            setError(err.message || "An unexpected validation exception occurred.");
+            setIsLoading(false); // stop loading state on failure
         }
+    }
 
-        // If login/signup works, send the user to the dashboard.
-        router.push("/resident/dashboard");
-        router.refresh();
+    // switch between sign-in and sign-up form modes
+    function handleModeSwitch() {
+        setError(null);
+        setMode(prev => prev === "sign-in" ? "sign-up" : "sign-in");
     }
 
     return (
-    <main className="min-h-screen flex items-center justify-center px-6">
-        <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 border rounded p-6">
-        <h1 className="text-2xl font-semibold">{mode === "sign-in" ? "Sign in" : "Create an account"}</h1>
+        <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-zinc-950">
+            <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 bg-white dark:bg-zinc-900 shadow-md transition-all">
+                
+                {/* Header view area */}
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                        {mode === "sign-in" ? "Sign in" : "Create an account"}
+                    </h1>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">
+                        {mode === "sign-in" ? "Access your resident tracking dashboard ledger" : "Sign up below to join your association community"}
+                    </p>
+                </div>
 
-        {mode === "sign-up" && (
-            <input required placeholder="Full name" value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full border rounded px-3 py-2" />
-        )}
+                <div className="space-y-3">
+                    {/* Full Name Block: Visible only during signup workflows */}
+                    {mode === "sign-up" && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Full Name</label>
+                            <input 
+                                required 
+                                type="text"
+                                placeholder="Juan dela Cruz" 
+                                value={fullName}
+                                disabled={isLoading}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="w-full border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" 
+                            />
+                        </div>
+                    )}
 
-        <input type="email" required placeholder="Email" value={email}
-            onChange={(e) => setEmail(e.target.value)} className="w-full border rounded px-3 py-2" />
-        <input type="password" required minLength={8} placeholder="Password" value={password}
-            onChange={(e) => setPassword(e.target.value)} className="w-full border rounded px-3 py-2" />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button className="w-full bg-slate-800 text-white rounded py-2">
-            {mode === "sign-in" ? "Sign in" : "Sign up"}
-        </button>
-        <button type="button" onClick={() => setMode(mode === "sign-in" ? "sign-up" : "sign-in")}
-            className="w-full text-sm text-slate-500">
-            {mode === "sign-in" ? "Need an account? Sign up" : "Have an account? Sign in"}
-        </button>
-        </form>
-    </main>
+                    {/* Email Input Field */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Email Address</label>
+                        <input 
+                            required 
+                            type="email" 
+                            placeholder="name@example.com" 
+                            value={email}
+                            disabled={isLoading}
+                            onChange={(e) => setEmail(e.target.value)} 
+                            className="w-full border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" 
+                        />
+                    </div>
+
+                    {/* Password Input Field */}
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300">Password</label>
+                        <input 
+                            required 
+                            type="password" 
+                            minLength={8} 
+                            placeholder="••••••••" 
+                            value={password}
+                            disabled={isLoading}
+                            onChange={(e) => setPassword(e.target.value)} 
+                            className="w-full border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50" 
+                        />
+                    </div>
+                </div>
+
+                {/* Inline Error Logs Alerts Banner */}
+                {error && (
+                    <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-lg">
+                        <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{error}</p>
+                    </div>
+                )}
+
+                {/* Execution controls wrapper button setup */}
+                <div className="space-y-2 pt-1">
+                    <button 
+                        disabled={isLoading}
+                        className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-950 text-white font-medium rounded-lg py-2 text-sm transition shadow-sm disabled:opacity-50 flex items-center justify-center"
+                    >
+                        {isLoading ? "Processing validation..." : mode === "sign-in" ? "Sign in" : "Sign up"}
+                    </button>
+                    
+                    <button 
+                        type="button" 
+                        disabled={isLoading}
+                        onClick={handleModeSwitch}
+                        className="w-full text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition py-1"
+                    >
+                        {mode === "sign-in" ? "Need an account? Create one here" : "Already have a linked account? Sign in"}
+                    </button>
+                </div>
+            </form>
+        </main>
     );
 }

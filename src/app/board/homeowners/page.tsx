@@ -11,7 +11,8 @@ export default async function HomeownersPage() {
     const { data: units } = await supabase
         .from("units")
         .select("id, unit_number, address_line, block, lot, profiles(id, full_name, email)")
-        .order("unit_number", { ascending: true });
+        .order("block", { ascending: true })
+        .order("lot", { ascending: true });
 
     // load any signed-up profiles that still need a unit assigned
     const { data: unassigned } = await supabase

@@ -14,7 +14,7 @@ export async function createUnit(formData: FormData) {
         address_line: formData.get("address_line") as string,
     });
 
-    const (error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
     revalidatePath("/board/homeowners");
 }
 

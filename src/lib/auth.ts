@@ -1,13 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 
 export async function getCurrentProfile() {
-    // Create a Supabase client on the server for this request.
+    // Start a Supabase client on the server side.
     const supabase = await createClient();
 
-    // Get the current logged-in session.
+    // Ask Supabase who is currently logged in.
     const { data: { session } } = await supabase.auth.getSession();
 
-    // If no user is logged in, return null.
+    // If nobody is logged in, there is no profile to return.
     if (!session) return null;
 
     // Query the user's profile from the profiles table.
@@ -17,4 +17,15 @@ export async function getCurrentProfile() {
         .single();
 
     return data;
+}
+
+export async function requireBoardAdmin() {
+    // Get the current user's profile.
+    const profile = await getCurrentProfile();
+
+    // Only allow users with the board_admin role.
+    if (!profile || profile.role !== "board_admin") {
+        throw new Error("Board access required");
+    }
+    return profile;
 }

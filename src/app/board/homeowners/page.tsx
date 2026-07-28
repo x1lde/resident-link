@@ -3,13 +3,16 @@ import { createUnit, assignUnit } from "@/lib/actions/homeowners";
 import { formatUnit } from "@/lib/format";
 
 export default async function HomeownersPage() {
+    // Start a Supabase client for this page.
     const supabase = await createClient();
 
+    // Load all units and the homeowner linked to each unit.
     const { data: units } = await supabase
     .from("units")
     .select("*, profiles(id, full_name, email)")
     .order("unit_numver");
 
+    // Load users who signed up but have not yet been assigned a unit.
     const { data: unassigned } = await supabase
     .from("profiles")
     .select("id, full_name, email")

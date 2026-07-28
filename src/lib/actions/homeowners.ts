@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "../supabase/server";
 import { requireBoardAdmin } from "@/lib/auth";
 
-// Creates a new property unit (block/lot) record.
+/**
+ * Creates a new property unit (block/lot) record safely.
+ */
 export async function createUnit(formData: FormData) {
-    // require admin access before making changes
+    // 1. Enforce admin role permissions checkpoint validation
     await requireBoardAdmin();
 
     const supabase = await createClient();
@@ -14,15 +16,19 @@ export async function createUnit(formData: FormData) {
     const lot = (formData.get("lot") as string)?.trim();
     const addressLine = (formData.get("address_line") as string)?.trim();
 
-    // block and lot are required identifiers for a new unit
+    // 2. Validate required unit identifiers
     if (!block || !lot) {
         throw new Error("Both Block and Lot identifiers are required fields.");
     }
 
-    // insert the new unit record into the database
+    // 3. Build the display-ready unit number for list sorting
+    const unitNumber = `B${block}-L${lot}`;
+
+    // 4. Save the unit record into the database
     const { error } = await supabase.from("units").insert({
         block,
         lot,
+        unit_number: unitNumber,
         address_line: addressLine || null,
     });
 
@@ -30,25 +36,28 @@ export async function createUnit(formData: FormData) {
         throw new Error(`Failed to create unit: ${error.message}`);
     }
 
-    // refresh the homeowners dashboard after creation
+    // 5. Instantly invalidate rendering layout view dashboard cache states
     revalidatePath("/board/homeowners");
 }
 
-// Links an existing homeowner profile to a unit.
+/**
+ * Links an existing registered homeowner profile to a property unit slot.
+ */
 export async function assignUnit(formData: FormData) {
-    // require admin access before modifying profiles
+    // 1. Enforce admin role permissions checkpoint validation
     await requireBoardAdmin();
 
     const supabase = await createClient();
     const unitId = formData.get("unit_id") as string;
     const profileId = formData.get("profile_id") as string;
 
-    // ensure both the unit and profile are provided
+    // 2. Ensure vital matching configuration attributes are supplied
     if (!unitId || !profileId) {
         throw new Error("Missing vital matching parameters: unit_id or profile_id.");
     }
 
-    // update the profile to link it to the selected unit
+    // 3. Update profile row to bridge relational account assignments
+    // 3. Link the homeowner profile to the selected unit
     const { error } = await supabase
         .from("profiles")
         .update({ unit_id: unitId })
@@ -58,6 +67,6 @@ export async function assignUnit(formData: FormData) {
         throw new Error(`Failed to assign unit link: ${error.message}`);
     }
 
-    // refresh the homeowners dashboard after assignment
+    // 4. Instantly invalidate rendering layout view dashboard cache states
     revalidatePath("/board/homeowners");
 }

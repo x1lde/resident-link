@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+    // router used for navigation after auth; supabase client for auth calls
     const router = useRouter();
     const supabase = createClient();
 
@@ -18,6 +19,7 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false); // block duplicate submissions
 
+    // handle form submit: sign-in or sign-up, then fetch profile and redirect
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setError(null);
@@ -25,33 +27,49 @@ export default function LoginPage() {
 
         try {
             if (mode === "sign-in") {
-                // authenticate existing user
-                const { error: signInError } = await supabase.auth.signInWithPassword({ 
-                    email, 
-                    password 
-                });
+                // 1. Authenticate user session
+                const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
                 if (signInError) throw signInError;
             } else {
-                // create new user account and attach full name metadata
-                const { error: signUpError } = await supabase.auth.signUp({
+                // 2. Register user account
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                     email,
                     password,
                     options: {
-                        data: {
-                            full_name: fullName.trim()
-                        }
-                    }
+                        data: { full_name: fullName.trim() },
+                        emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    },
                 });
                 if (signUpError) throw signUpError;
+
+                // If email confirmation is enabled, no session/user exists yet
+                if (!signUpData.session) {
+                    alert("Registration successful! Please check your email to verify your account.");
+                    setIsLoading(false);
+                    return;
+                }
             }
 
-            // navigate to the resident dashboard after success
-            router.push("/resident/dashboard");
+            // 3. Securely fetch the active user data 
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError || !user) throw new Error("Could not retrieve authenticated profile data.");
+
+            // 4. Query user database record to evaluate layout permission privileges
+            const { data: profile, error: profileError } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", user.id)
+                .single();
+
+            if (profileError) throw profileError;
+
+            // 5. Navigate to routing target based on metadata assignment
+            router.push(profile?.role === "board_admin" ? "/board/dashboard" : "/resident/dashboard");
             router.refresh();
-            
+
         } catch (err: any) {
             setError(err.message || "An unexpected validation exception occurred.");
-            setIsLoading(false); // stop loading state on failure
+            setIsLoading(false);
         }
     }
 
@@ -61,6 +79,7 @@ export default function LoginPage() {
         setMode(prev => prev === "sign-in" ? "sign-up" : "sign-in");
     }
 
+    // render login / signup UI
     return (
         <main className="min-h-screen flex items-center justify-center p-6 bg-slate-50 dark:bg-zinc-950">
             <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-5 border border-slate-200 dark:border-zinc-800 rounded-xl p-6 bg-white dark:bg-zinc-900 shadow-md transition-all">

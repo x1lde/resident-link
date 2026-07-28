@@ -19,8 +19,8 @@ export default async function HomeownersPage() {
     .is("unit_id", null);
 
     return(
-        <div className="p-8 space-y-8 max-w-21">
-            <h1 className="text-2x1 font-semibold">Homeowners</h1>
+        <div className="p-8 space-y-8 max-w-4xl mx-auto w-full">
+            <h1 className="text-2xl font-semibold">Homeowners</h1>
 
             <div className="space-y-2">
                 <h2 className="font-medium">Units</h2>
@@ -53,8 +53,12 @@ export default async function HomeownersPage() {
                     <input name="block" required placeholder="Block (e.g. 20)" className="w-full border rounded px-3 py-2" />
                     <input name="lot" required placeholder="Lot (e.g. 55)" className="w-full border rounded px-3 py-2" />
                 </div>
-                <input name="address_line" placeholder="Street / additional address (optional)"/>
-                <button className="bg-slate-800 text-white rounded px-4 py-2">Add unit</button>
+                <input name="address_line" placeholder="Street / additional address (optional)" 
+                className="w-full border dark:border-zinc-700 dark:bg-zinc-800 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                <button className="whitespace-nowrap bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:text-slate-900 
+                text-white font-medium rounded px-4 py-2 text-sm transition shadow-sm w-full sm:w-auto">
+                    Add unit
+                </button>
             </form>
 
             { unassigned && unassigned.length > 0 && (
